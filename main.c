@@ -2,10 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 const char  *PROMPT     = "537sh% ";
 const size_t PROMPT_LEN = 8;
 const size_t MAX_INPUT  = 512; // excluding \n and \0
+const size_t MAX_ARGS   = 256;
 
 const size_t ERROR_LEN = 23;
 const char  *ERROR_MESSAGE = "An error has occurred\n";
@@ -18,27 +21,39 @@ const int COMPLETE = 1;
 void get_input(char *input)
 {
     // Read in a line from stdin
-    char line[MAX_INPUT + 1];
-    bzero(line, MAX_INPUT + 1);
-    read(STDIN_FILENO, line, MAX_INPUT);
-
+    read(STDIN_FILENO, input, MAX_INPUT);
     // Chomp trailing newline
-    size_t i = 0, len = strlen(line);
-    for (; i < len; ++i) {
-        if (line[i] == '\n')
-            break;
-        else
-            input[i] = line[i];
-    }
-    input[i] = '\0';
+    strtok(input, "\n");
 }
 
-// ---- Handle Built-in Commands ----------------------------------------------
-int handle_builtin(const char *input)
+
+// ---- Process Input ---------------------------------------------------------
+int process_input(char *input)
 {
-    if (strcmp(input, "exit") == 0) {
+    // Parse out args
+    int  argc = 0;
+    char *arg = strtok(input, " ");
+    char *args[MAX_ARGS];
+    bzero(args, sizeof(args));
+    while (arg != NULL && argc < MAX_ARGS) {
+        args[argc++] = arg;
+        arg = strtok(NULL, " ");
+    }
+    
+    // Echo command
+    // TODO: if in 'verbose' mode (./537sh -v)
+    write(STDOUT_FILENO, "@----> ", 7); 
+    write(STDOUT_FILENO, args[0], strlen(args[0]));
+    write(STDOUT_FILENO, "\n", 1); 
+
+    // Handle built-in commands ---------------------------
+
+    // Handle exit --------------------
+    if (strcmp(args[0], "exit") == 0) {
         return COMPLETE;
-    } else if (strcmp(input, "pwd") == 0) {
+    }
+    // Handle pwd ---------------------
+    else if (strcmp(args[0], "pwd") == 0) {
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd)) == NULL) {
             write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
@@ -46,45 +61,44 @@ int handle_builtin(const char *input)
             write(STDOUT_FILENO, cwd, strlen(cwd));
             write(STDOUT_FILENO, "\n", 1); 
         }
-    } else if (strcmp(input, "cd") == 0) {
-        // Change to home directory
-        const char *home = getenv("HOME");
-        if (home == NULL)
+    }
+    // Handle chdir -------------------
+    else if (strcmp(args[0], "cd") == 0) {
+        if (argc == 1) {
+            // Change to home directory
+            const char *home = getenv("HOME");
+            if (home == NULL)
+                write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
+            else
+                chdir(home);
+        } else if (argc == 2) {
+            // Change to specified directory
+            chdir(args[1]);
+        } else {
+            // TODO: not sure what to do with extra args?
+            // ignore?  error?  segfault?
+            write(STDOUT_FILENO, "too many args\n", 14);
+        }
+    }
+
+    // Handle external commands ---------------------------
+    else {
+        pid_t child_pid = fork();
+        if (child_pid == 0) {
+            // Run it!
+            execvp(args[0], args);
+            // Exec returns on error: print error msg, kill child proc
             write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
-        else
-            chdir(home);
-    } else if (strcmp(input, "cd[spaces+][dir]") == 0) {
-        // TODO: this won't actually work... needs moar regex
-        write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
+            exit(1);
+        } else {
+            int status;
+            waitpid(child_pid, &status, 0);
+            // TODO: handle redirection
+            // TODO: check status
+        }
     }
 
     return INCOMPLETE;
-}
-
-
-// ---- Process Input ---------------------------------------------------------
-int process_input(const char *input)
-{
-    // TODO: tokenize and handle bits individually
-
-    // Echo command
-    write(STDOUT_FILENO, input, strlen(input));
-    write(STDOUT_FILENO, "\n", 1); 
-
-    // Handle built-in commands
-    handle_builtin(input);
-    if (strcmp(input, "exit") == 0) {
-        return COMPLETE;
-    }
-
-    return INCOMPLETE;
-}
-
-
-// ---- Shell Prompt ----------------------------------------------------------
-void prompt()
-{
-    write(STDOUT_FILENO, PROMPT, PROMPT_LEN);
 }
 
 
@@ -96,7 +110,7 @@ void main_loop()
     bzero(input, MAX_INPUT + 1);
 
     while (!done) {
-        prompt();
+        write(STDOUT_FILENO, PROMPT, PROMPT_LEN);
         get_input(input);
         done = process_input(input);
     }
