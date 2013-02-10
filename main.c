@@ -5,6 +5,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include "functions.h"
+#include "structs.h"
+
+
 const char  *PROMPT     = "537sh% ";
 const size_t PROMPT_LEN = 8;
 const size_t MAX_INPUT  = 512; // excluding \n and \0
@@ -30,6 +34,18 @@ const int COMPLETE = 1;
     - Test robustness
 */
 
+// ----------------------------------------------------------------------------
+//  Refactor ---------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+
+
+
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+
+/*
 // ---- Get Input -------------------------------------------------------------
 void get_input(char *input)
 {
@@ -37,11 +53,14 @@ void get_input(char *input)
     read(STDIN_FILENO, input, MAX_INPUT);
     // Chomp trailing newline
     strtok(input, "\n");
+    // Handle the case where the input is only a newline (missed by strtok)
+    if (strcmp(input, "\n") == 0)
+        input[0] = '\0';
 }
 
 
 // ---- Process a Command -----------------------------------------------------
-int process_command(char *command)
+int process_command(char *command, int background)
 {
     // Parse out args
     int  argc = 0;
@@ -73,13 +92,18 @@ int process_command(char *command)
         if (argc == 1) {
             // Change to home directory
             const char *home = getenv("HOME");
-            if (home == NULL)
+            if (home == NULL) {
                 write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
-            else
-                chdir(home);
+            } else {
+                if (chdir(home) == -1) {
+                    perror("cd");
+                }
+            }
         } else if (argc >= 2) {
             // Change to specified directory
-            chdir(args[1]);
+            if (chdir(args[1]) == -1) {
+                perror("cd");
+            }
         }
     }
 
@@ -93,10 +117,12 @@ int process_command(char *command)
             write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
             exit(1);
         } else {
-            int status;
-            waitpid(child_pid, &status, 0);
-            // TODO: handle redirection
-            // TODO: check status
+            if (!background) {
+                int status;
+                waitpid(child_pid, &status, 0);
+                // TODO: handle redirection
+                // TODO: check status
+            }
         }
     }
 
@@ -105,13 +131,13 @@ int process_command(char *command)
 
 
 // ---- Process a Group of Commands -------------------------------------------
-int process_commands(char *cmds[], size_t numcmds)
+int process_commands(char *cmds[], size_t numcmds, int background)
 {
     if (cmds == NULL) return INCOMPLETE;
 
     int i = 0, res;
     for (; i < numcmds; ++i) {
-        res = process_command(cmds[i]);
+        res = process_command(cmds[i], background);
     }
 
     return res;
@@ -119,7 +145,7 @@ int process_commands(char *cmds[], size_t numcmds)
 
 
 // ---- Process a Single Sequence of Commands ---------------------------------
-int process_sequence(char *sequence)
+int process_sequence(char *sequence, int background)
 {
     // Parse out commands
     int numcmds = 0;
@@ -131,19 +157,19 @@ int process_sequence(char *sequence)
         cmd = strtok(NULL, ";");
     }
 
-    return process_commands(cmds, numcmds);
+    return process_commands(cmds, numcmds, background);
 }
 
 
 // ---- Process Parallel Sequences of Commands --------------------------------
-int process_sequences(char *seqs[], size_t numseqs)
+int process_sequences(char *seqs[], size_t numseqs, int background)
 {
     if (seqs == NULL) return INCOMPLETE;
 
     // For each parallel sequence of commands...
     int i = 0, res;
     for (; i < numseqs; ++i) {
-        res = process_sequence(seqs[i]);
+        res = process_sequence(seqs[i], background);
     }
 
     return res;
@@ -153,18 +179,74 @@ int process_sequences(char *seqs[], size_t numseqs)
 // ---- Process Input ---------------------------------------------------------
 int process_input(char *input)
 {
-    // Parse out parallel sequences of commands and process them 
-    int  numseqs = 0;
-    char *seq  = strtok(input, "+");
-    char *seqs[MAX_SEQS];
-    bzero(seqs, sizeof(seqs));
-    while (seq != NULL && numseqs < MAX_SEQS) {
-        seqs[numseqs++] = seq;
-        seq = strtok(NULL, "+");
+    // Handle no input
+    if (input != NULL && strlen(input) == 0) {
+        return INCOMPLETE;
     }
-    int res = process_sequences(seqs, numseqs);
+
+    size_t end = strlen(input);
+    int background = 0;
+    if (input[end - 1] == '+') 
+        background = 1;
+
+    pid_t child_pid = background ? fork() : -1;
+    int res = INCOMPLETE;
+
+    if (child_pid == 0 || child_pid == -1) {
+        // Parse out parallel sequences of commands and process them 
+        int  numseqs = 0;
+        char *seq  = strtok(input, "+");
+        char *seqs[MAX_SEQS];
+        bzero(seqs, sizeof(seqs));
+        while (seq != NULL && numseqs < MAX_SEQS) {
+            seqs[numseqs++] = seq;
+            seq = strtok(NULL, "+");
+        }
+        res = process_sequences(seqs, numseqs, background);
+    }
 
     return res;
+}
+*/
+
+
+
+// ---- Tests -----------------------------------------------------------------
+int run_tests()
+{
+    struct command cmd;
+    cmd.outputFile = NULL;
+
+    // Build word list
+    if ((cmd.words = malloc(3)) == NULL) {
+        perror("malloc");
+        exit(1);
+    }
+    memset(cmd.words, 0, 3);
+
+    cmd.words[0] = "ls";
+    cmd.words[1] = "*.c";
+    cmd.words[2] = NULL;
+
+    // Run a single command
+    pid_t child_pid = fork();
+    if (child_pid == 0) {
+        execvp(cmd.words[0], cmd.words);
+        // Exec only returns on an error...
+        error();
+        exit(1);
+    } else {
+        int status;
+        if (waitpid(child_pid, &status, 0) == -1) {
+            perror("waitpid");
+            exit(1);
+        }
+        // TODO: handle redirection, check status
+    }
+
+    free(cmd.words);
+
+    return INCOMPLETE;
 }
 
 
@@ -172,13 +254,13 @@ int process_input(char *input)
 void main_loop()
 {
     int  done = INCOMPLETE;
-    char input[MAX_INPUT + 1];
-    bzero(input, MAX_INPUT + 1);
-
     while (!done) {
-        write(STDOUT_FILENO, PROMPT, PROMPT_LEN);
-        get_input(input);
-        done = process_input(input);
+        prompt();
+
+        struct line line;
+        get_line(&line);
+        //done = process_line(&line);
+        done = run_tests();
     }
 }
 
