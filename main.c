@@ -260,7 +260,7 @@ void main_loop()
         struct line line;
         get_line(&line);
         //done = process_line(&line);
-        done = run_tests();
+        //done = run_tests();
     }
 }
 

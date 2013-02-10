@@ -15,5 +15,10 @@ struct line {
     int endsInPlus;
 };
 
+
+void parse_line(struct line *line, char *input);
+void parse_sequence(struct sequence *seq, char *input);
+void parse_command(struct command *cmd, char *input);
+
 #endif
 
