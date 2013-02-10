@@ -10,6 +10,7 @@ const size_t PROMPT_LEN = 8;
 const size_t MAX_INPUT  = 512; // excluding \n and \0
 const size_t MAX_ARGS   = 256;
 const size_t MAX_SEQS   = 64;
+const size_t MAX_CMDS   = 64;
 
 const size_t ERROR_LEN = 23;
 const char  *ERROR_MESSAGE = "An error has occurred\n";
@@ -39,12 +40,12 @@ void get_input(char *input)
 }
 
 
-// ---- Process a Single Sequence of Commands ---------------------------------
-int process_sequence(char *sequence)
+// ---- Process a Command -----------------------------------------------------
+int process_command(char *command)
 {
     // Parse out args
     int  argc = 0;
-    char *arg = strtok(sequence, " ");
+    char *arg = strtok(command, " ");
     char *args[MAX_ARGS];
     bzero(args, sizeof(args));
     while (arg != NULL && argc < MAX_ARGS) {
@@ -67,8 +68,7 @@ int process_sequence(char *sequence)
             write(STDOUT_FILENO, cwd, strlen(cwd));
             write(STDOUT_FILENO, "\n", 1); 
         }
-    }
-    // Handle chdir -------------------
+    } // Handle chdir -------------------
     else if (strcmp(args[0], "cd") == 0) {
         if (argc == 1) {
             // Change to home directory
@@ -101,6 +101,37 @@ int process_sequence(char *sequence)
     }
 
     return INCOMPLETE;
+}
+
+
+// ---- Process a Group of Commands -------------------------------------------
+int process_commands(char *cmds[], size_t numcmds)
+{
+    if (cmds == NULL) return INCOMPLETE;
+
+    int i = 0, res;
+    for (; i < numcmds; ++i) {
+        res = process_command(cmds[i]);
+    }
+
+    return res;
+}
+
+
+// ---- Process a Single Sequence of Commands ---------------------------------
+int process_sequence(char *sequence)
+{
+    // Parse out commands
+    int numcmds = 0;
+    char *cmd = strtok(sequence, ";");
+    char *cmds[MAX_CMDS];
+    bzero(cmds, sizeof(cmds));
+    while (cmd != NULL && numcmds < MAX_CMDS) {
+        cmds[numcmds++] = cmd;
+        cmd = strtok(NULL, ";");
+    }
+
+    return process_commands(cmds, numcmds);
 }
 
 
