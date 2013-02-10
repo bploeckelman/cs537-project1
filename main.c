@@ -9,6 +9,7 @@ const char  *PROMPT     = "537sh% ";
 const size_t PROMPT_LEN = 8;
 const size_t MAX_INPUT  = 512; // excluding \n and \0
 const size_t MAX_ARGS   = 256;
+const size_t MAX_SEQS   = 64;
 
 const size_t ERROR_LEN = 23;
 const char  *ERROR_MESSAGE = "An error has occurred\n";
@@ -16,6 +17,17 @@ const char  *ERROR_MESSAGE = "An error has occurred\n";
 const int INCOMPLETE = 0;
 const int COMPLETE = 1;
 
+
+// ------------------------------------
+//               TODO
+// ------------------------------------
+/*
+    - Tabs need to be chomped off of commands
+      eg.  % who\t    results in an error
+    - Process sequential commands
+    - Output redirection
+    - Test robustness
+*/
 
 // ---- Get Input -------------------------------------------------------------
 void get_input(char *input)
@@ -27,12 +39,12 @@ void get_input(char *input)
 }
 
 
-// ---- Process Input ---------------------------------------------------------
-int process_input(char *input)
+// ---- Process a Single Sequence of Commands ---------------------------------
+int process_sequence(char *sequence)
 {
     // Parse out args
     int  argc = 0;
-    char *arg = strtok(input, " ");
+    char *arg = strtok(sequence, " ");
     char *args[MAX_ARGS];
     bzero(args, sizeof(args));
     while (arg != NULL && argc < MAX_ARGS) {
@@ -40,12 +52,6 @@ int process_input(char *input)
         arg = strtok(NULL, " ");
     }
     
-    // Echo command
-    // TODO: if in 'verbose' mode (./537sh -v)
-    write(STDOUT_FILENO, "@----> ", 7); 
-    write(STDOUT_FILENO, args[0], strlen(args[0]));
-    write(STDOUT_FILENO, "\n", 1); 
-
     // Handle built-in commands ---------------------------
 
     // Handle exit --------------------
@@ -71,13 +77,9 @@ int process_input(char *input)
                 write(STDERR_FILENO, ERROR_MESSAGE, ERROR_LEN);
             else
                 chdir(home);
-        } else if (argc == 2) {
+        } else if (argc >= 2) {
             // Change to specified directory
             chdir(args[1]);
-        } else {
-            // TODO: not sure what to do with extra args?
-            // ignore?  error?  segfault?
-            write(STDOUT_FILENO, "too many args\n", 14);
         }
     }
 
@@ -99,6 +101,39 @@ int process_input(char *input)
     }
 
     return INCOMPLETE;
+}
+
+
+// ---- Process Parallel Sequences of Commands --------------------------------
+int process_sequences(char *seqs[], size_t numseqs)
+{
+    if (seqs == NULL) return INCOMPLETE;
+
+    // For each parallel sequence of commands...
+    int i = 0, res;
+    for (; i < numseqs; ++i) {
+        res = process_sequence(seqs[i]);
+    }
+
+    return res;
+}
+
+
+// ---- Process Input ---------------------------------------------------------
+int process_input(char *input)
+{
+    // Parse out parallel sequences of commands and process them 
+    int  numseqs = 0;
+    char *seq  = strtok(input, "+");
+    char *seqs[MAX_SEQS];
+    bzero(seqs, sizeof(seqs));
+    while (seq != NULL && numseqs < MAX_SEQS) {
+        seqs[numseqs++] = seq;
+        seq = strtok(NULL, "+");
+    }
+    int res = process_sequences(seqs, numseqs);
+
+    return res;
 }
 
 
