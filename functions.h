@@ -8,7 +8,7 @@ void prompt();
 void error();
 
 void get_line(struct line *line);
-int  process_line(struct line *line);
+//int  process_line(struct line *line);
 
 void run_command(struct command *cmd);
 void run_sequence(struct sequence *seq);

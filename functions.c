@@ -1,8 +1,8 @@
 #include "functions.h"
 #include "structs.h"
 
-#include <stdio.h>
-#include <stdlib.h>
+//#include <stdio.h>
+//#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
@@ -47,53 +47,10 @@ void get_line(struct line *line)
     *(end + 1) = '\0';
     //printf("Chomped:  '%s'\n", input);
 
-    // Parse input into struct line -----------------------
-
-    // Ends in '+'? 
-    const char last = *(input + strlen(input));
-    if (last == '+')
-        line->endsInPlus = 1;
-    else
-        line->endsInPlus = 0;
-
-    // Determine the number of sequences in the input line
-    int numPluses = 0;
-    char *ch = input;
-    while (*ch != '\0') {
-        if (*ch++ == '+')
-            ++numPluses;
-    }
-    const int numSequences = (line->endsInPlus) ? numPluses : numPluses + 1;
-    //printf("Num +: %d  Num seqs: %d\n", numPluses, numSequences);
-
-    // Allocate memory for the sequences in this line
-    const size_t size = sizeof(struct sequence) * numSequences;
-    if ((line->sequences = malloc(size)) == NULL) {
-        perror("malloc");
-        exit(1);
-    }
-
-    // Parse the sequences from the line
-    int i = 0; 
-    char *seq = strtok(input, "+");
-    while (seq != NULL && i < numSequences) {
-        // TODO: parse out each sequence string into a struct command
-        line->sequences->str = seq;
-        printf("Sequence[%d] = '%s'\n", i++, line->sequences->str);
-        seq = strtok(NULL, "+");
-    }
-
-    // TODO: temporary cleanup
-    free(line->sequences);
+    // Parse input into struct line
+    parse_line(line, input);
 }
 
-int process_line(struct line *line)
-{
-    assert(line);
-
-    // TODO
-    return 0;
-}
 
 void run_command(struct command *cmd)
 {
