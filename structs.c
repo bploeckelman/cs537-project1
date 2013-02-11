@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <ctype.h>
 
+
 void parse_line(struct line *line, char *input)
 {
     assert(line && input);
@@ -21,30 +22,27 @@ void parse_line(struct line *line, char *input)
     while (*ch != '\0') {
         if (*ch++ == '+')
             ++numPluses;
-    }
-    const int numSequences = (line->endsInPlus) ? numPluses : numPluses + 1;
+    } 
+    line->numSequences = (line->endsInPlus) ? numPluses : numPluses + 1;
     //printf("Num +: %d  Num seqs: %d\n", numPluses, numSequences);
 
     // Allocate memory for the sequences in this line
-    const size_t size = sizeof(struct sequence) * numSequences;
-    if ((line->sequences = malloc(size)) == NULL) {
+    const size_t size = sizeof(struct sequence) * line->numSequences;
+    if ((line->sequences = (struct sequence *) malloc(size)) == NULL) {
         perror("malloc");
         exit(1);
     }
+    memset(line->sequences, 0, size);
 
     // Parse the sequences from the input, note: uses strtok_r()
     int i = 0; 
     char *end_seq;
     char *seq = strtok_r(input, "+", &end_seq);
-    while (seq != NULL && i < numSequences) {
+    while (seq != NULL && i < line->numSequences) {
         printf("Sequence[%d] = '%s'\n", i++, seq);
         parse_sequence(line->sequences, seq);
         seq = strtok_r(NULL, "+", &end_seq);
     }
-
-    // TODO: temporary cleanup
-    // for later, make a cleanup(struct line *line) function that frees all the things
-    free(line->sequences);
 }
 
 void parse_sequence(struct sequence *seq, char *input)
@@ -59,14 +57,16 @@ void parse_sequence(struct sequence *seq, char *input)
         ++numCommands;
         cmd = strtok(NULL, ";");
     }
+    seq->numCommands = numCommands;
     free(str);
 
     // Allocate memory for the commands in this sequence
     const size_t size = sizeof(struct command) * numCommands;
-    if ((seq->commands = malloc(size)) == NULL) {
+    if ((seq->commands = (struct command *) malloc(size)) == NULL) {
         perror("malloc");
         exit(1);
     }
+    memset(seq->commands, 0, size);
 
     // Parse the commands from the input, note: uses strtok_r()
     int i = 0; 
@@ -77,10 +77,6 @@ void parse_sequence(struct sequence *seq, char *input)
         parse_command(seq->commands, cmd);
         cmd = strtok_r(NULL, ";", &end_cmd);
     }
-
-    // TODO: temporary cleanup
-    free(seq->commands); 
-    // for later, make a cleanup(struct line *line) function that frees all the things
 }
 
 void parse_command(struct command *cmd, char *input)
@@ -96,11 +92,12 @@ void parse_command(struct command *cmd, char *input)
         ++numWords;
         word = strtok(NULL, " ");
     }
+    cmd->numWords = numWords;
     free(str);
 
     // Allocate memory for the words in this command
-    const size_t size = sizeof(char *) * numWords;
-    if ((cmd->words = malloc(size)) == NULL) {
+    const size_t size = sizeof(char *) * numWords + 1;
+    if ((cmd->words = (char **) malloc(size)) == NULL) {
         perror("malloc");
         exit(1);
     }
@@ -112,14 +109,10 @@ void parse_command(struct command *cmd, char *input)
     word = strtok_r(input, " ", &end_word);
     while (word != NULL && i < numWords) {
         printf("    Word[%d] = '%s'\n", i, word);
-        cmd->words[i++] = word;
+        cmd->words[i++] = strdup(word);
         word = strtok_r(NULL, " ", &end_word);
     }
 
     // TODO: look for redirection operator and handle it if found
-
-    // TODO: temporary cleanup
-    free(cmd->words);
-    // for later, make a cleanup(struct line *line) function that frees all the things
 }
 

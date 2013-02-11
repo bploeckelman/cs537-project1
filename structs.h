@@ -4,14 +4,17 @@
 struct command {
     char **words;
     char *outputFile;
+    int numWords;
 };
 
 struct sequence {
     struct command *commands;
+    int numCommands;
 };
 
 struct line {
     struct sequence *sequences;
+    int numSequences;
     int endsInPlus;
 };
 
