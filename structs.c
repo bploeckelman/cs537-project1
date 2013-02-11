@@ -13,10 +13,7 @@ void parse_line(struct line *line, char *input)
 
     // Ends in '+'? 
     const char last = *(input + strlen(input));
-    if (last == '+')
-        line->endsInPlus = 1;
-    else
-        line->endsInPlus = 0;
+    line->endsInPlus = (last == '+') ? 1 : 0;
 
     // Determine the number of sequences in the input line
     int numPluses = 0;
@@ -102,11 +99,12 @@ void parse_command(struct command *cmd, char *input)
     free(str);
 
     // Allocate memory for the words in this command
-    const size_t size = numWords;
+    const size_t size = sizeof(char *) * numWords;
     if ((cmd->words = malloc(size)) == NULL) {
         perror("malloc");
         exit(1);
     }
+    memset(cmd->words, 0, size);
 
     // Parse the words from the input
     int i = 0;
@@ -114,7 +112,7 @@ void parse_command(struct command *cmd, char *input)
     word = strtok_r(input, " ", &end_word);
     while (word != NULL && i < numWords) {
         printf("    Word[%d] = '%s'\n", i, word);
-        cmd->words[i++] = word; 
+        cmd->words[i++] = word;
         word = strtok_r(NULL, " ", &end_word);
     }
 
