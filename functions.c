@@ -96,9 +96,23 @@ int process_line(struct line *line)
     int seq_i;
     for (seq_i = 0; seq_i < line->numSequences; ++seq_i) {
         struct sequence *seq = &line->sequences[seq_i];
-        // TODO: fork here if !(last sequence && line->endsInPlus)
-        if (run_sequence(seq) == 1) {
-            return 1;
+        // Fork here if !(last sequence && line->endsInPlus)
+        if (seq_i == line->numSequences - 1 && line->endsInPlus) {
+            pid_t child_pid = fork();
+            if (child_pid == 0) {
+                if (run_sequence(seq) == 1)
+                    return 1;
+            } else {
+                int status;
+                if (waitpid(child_pid, &status, 0) == -1) {
+                    perror("waitpid");
+                    exit(1);
+                }
+            }
+        } else {
+            // Just run the sequence in the current process
+            if (run_sequence(seq) == 1)
+                return 1;
         }
     }
 
