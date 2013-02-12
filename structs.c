@@ -39,7 +39,9 @@ void parse_line(struct line *line, char *input)
     char *end_seq;
     char *seq = strtok_r(input, "+", &end_seq);
     while (seq != NULL && i < line->numSequences) {
+#ifdef DEBUG
         printf("Sequence[%d] = '%s'\n", i++, seq);
+#endif
         parse_sequence(line->sequences, seq);
         seq = strtok_r(NULL, "+", &end_seq);
     }
@@ -73,7 +75,9 @@ void parse_sequence(struct sequence *seq, char *input)
     char *end_cmd;
     cmd = strtok_r(input, ";", &end_cmd);
     while (cmd != NULL && i < numCommands) {
+#ifdef DEBUG
         printf("  Command[%d] = '%s'\n", i++, cmd);
+#endif
         parse_command(seq->commands, cmd);
         cmd = strtok_r(NULL, ";", &end_cmd);
     }
@@ -96,7 +100,7 @@ void parse_command(struct command *cmd, char *input)
     free(str);
 
     // Allocate memory for the words in this command
-    const size_t size = sizeof(char *) * numWords + 1;
+    const size_t size = sizeof(char **) * numWords + 1;
     if ((cmd->words = (char **) malloc(size)) == NULL) {
         perror("malloc");
         exit(1);
@@ -108,7 +112,9 @@ void parse_command(struct command *cmd, char *input)
     char *end_word;
     word = strtok_r(input, " ", &end_word);
     while (word != NULL && i < numWords) {
+#ifdef DEBUG
         printf("    Word[%d] = '%s'\n", i, word);
+#endif
         cmd->words[i++] = strdup(word);
         word = strtok_r(NULL, " ", &end_word);
     }
