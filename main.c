@@ -42,7 +42,8 @@ int main(int argc, char *argv[])
     // Main input loop
     int done = INCOMPLETE;
     while (!done) {
-        prompt();
+        if (batchFile == NULL)
+            prompt();
 
         struct line line;
         memset(&line, 0, sizeof(struct line));

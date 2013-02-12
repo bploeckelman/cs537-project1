@@ -67,6 +67,12 @@ int get_line(struct line *line, FILE *target_stream)
     printf("Chomped:  '%s'\n", input);
 #endif
 
+    // If in batch mode, echo command back to stdout
+    if (target_stream != stdin) {
+        write(STDOUT_FILENO, input, strlen(input);
+        write(STDOUT_FILENO, "\n", 1):
+    }
+
     // Parse input into struct line
     parse_line(line, input);
 
