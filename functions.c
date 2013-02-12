@@ -31,14 +31,25 @@ void error()
     write(STDERR_FILENO, ERROR_STR, sizeof(ERROR_STR));
 }
 
-void get_line(struct line *line)
+int get_line(struct line *line, FILE *target_stream)
 {
     assert(line);
 
-    // Read in a line from stdin
+    // Read in a line from target_stream
     char input[MAX_LINE];
     memset(input, 0, MAX_LINE);
-    read(STDIN_FILENO, input, MAX_LINE);
+    //read(STDIN_FILENO, input, MAX_LINE);
+    if (fgets(input, MAX_LINE, target_stream) == NULL) {
+        if (feof(target_stream)) {
+            return 1;
+        } else {
+#ifdef DEBUG
+            perror("fgets");
+#endif
+            error();
+            return 0;
+        }
+    }
 
     // Chomp trailing newline
     strtok(input, "\n");
@@ -62,6 +73,8 @@ void get_line(struct line *line)
 #ifdef DEBUG
     print_line(line);
 #endif
+
+    return 0;
 }
 
 void free_line(struct line *line)

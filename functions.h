@@ -1,13 +1,15 @@
 #ifndef _FUNCTIONS_H_
 #define _FUNCTIONS_H_
 
+#include <stdio.h>
+
 #include "structs.h"
 
 
 void prompt();
 void error();
 
-void get_line(struct line *line);
+int get_line(struct line *line, FILE *target_stream);
 void free_line(struct line *line);
 
 int  process_line(struct line *line);

@@ -1,0 +1,4 @@
+ls -alF
+who
+ps
+echo "Done"
