@@ -49,33 +49,39 @@ void get_line(struct line *line)
         --end;
     }
     *(end + 1) = '\0';
-    //printf("Chomped:  '%s'\n", input);
+#ifdef DEBUG
+    printf("Chomped:  '%s'\n", input);
+#endif
 
     // Parse input into struct line
     parse_line(line, input);
+
+#ifdef DEBUG
+    print_line(line);
+#endif
 }
 
 void free_line(struct line *line)
 {
     assert(line);
 
-    int seq_i, cmd_i, word_i;
+    int seq_i, cmd_i;//, word_i;
     for (seq_i = 0; seq_i < line->numSequences; ++seq_i) {
         struct sequence *seq = &line->sequences[seq_i];
         assert(seq);
         for (cmd_i = 0; cmd_i < seq->numCommands; ++cmd_i) {
             struct command *cmd = &seq->commands[cmd_i];
             assert(cmd);
-            for (word_i = 0; word_i < cmd->numWords; ++word_i) {
-                free(cmd->words[word_i]);
-            }
+            free(cmd->cmd_str);
             free(cmd->words);
             //free(cmd);
         }
+        free(seq->seq_str);
         free(seq->commands);
         //free(seq);
     }
     free(line->sequences);
+    free(line->input_str);
 
     // Note: line is a stack variable
 }
@@ -147,6 +153,11 @@ int run_command(struct command *cmd)
 int run_builtin(struct command *cmd)
 {
     assert(cmd);
+
+    if (cmd->numWords == 0) {
+        printf("* Warning : running builtin on command with no words!\n");
+        return 0;
+    }
 
     // Handle exit --------------------
     if (strcmp(cmd->words[0], "exit") == 0) {

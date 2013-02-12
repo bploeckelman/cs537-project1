@@ -1,4 +1,3 @@
-#include <stdlib.h>
 #include <string.h>
 
 #include "functions.h"
@@ -16,19 +15,10 @@ int main(int argc, char *argv[])
         prompt();
 
         struct line line;
+        memset(&line, 0, sizeof(struct line));
+
         get_line(&line);
-
-        if (line.numSequences > 0) {
-            if (line.sequences[0].numCommands > 0) {
-                if (line.sequences[0].commands[0].numWords > 0) {
-                    if (!strcmp(line.sequences[0].commands[0].words[0], "exit"))
-                        done = COMPLETE;
-                }
-            }
-        }
-
-        //done = process_line(line);
-
+        done = process_line(&line);
         free_line(&line);
     }
 
