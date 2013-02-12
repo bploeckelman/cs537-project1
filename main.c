@@ -210,65 +210,18 @@ int process_input(char *input)
 */
 
 
-
-// ---- Tests -----------------------------------------------------------------
-int run_tests()
-{
-    struct command cmd;
-    cmd.outputFile = NULL;
-
-    // Build word list
-    if ((cmd.words = malloc(3)) == NULL) {
-        perror("malloc");
-        exit(1);
-    }
-    memset(cmd.words, 0, 3);
-
-    cmd.words[0] = "ls";
-    cmd.words[1] = "*.c";
-    cmd.words[2] = NULL;
-
-    // Run a single command
-    pid_t child_pid = fork();
-    if (child_pid == 0) {
-        execvp(cmd.words[0], cmd.words);
-        // Exec only returns on an error...
-        error();
-        exit(1);
-    } else {
-        int status;
-        if (waitpid(child_pid, &status, 0) == -1) {
-            perror("waitpid");
-            exit(1);
-        }
-        // TODO: handle redirection, check status
-    }
-
-    free(cmd.words);
-
-    return INCOMPLETE;
-}
-
-
-// ---- Main Loop -------------------------------------------------------------
-void main_loop()
-{
-    int  done = INCOMPLETE;
-    while (!done) {
-        prompt();
-
-        struct line line;
-        get_line(&line);
-        //done = process_line(&line);
-        //done = run_tests();
-    }
-}
-
-
 // ---- Entry -----------------------------------------------------------------
 int main(int argc, char *argv[])
 {
-    main_loop();        
+    int done = INCOMPLETE;
+    while (!done) {
+        prompt();
+        struct line line;
+        get_line(&line);
+        done = process_line(&line);
+        free_line(&line);
+    }
+
     return 0;
 }
 
