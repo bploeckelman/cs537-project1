@@ -121,7 +121,6 @@ void parse_sequence(struct sequence *seq, char *input)
 void parse_command(struct command *cmd, char *input)
 {
     assert(cmd && input);
-    //printf("Parsing command %p from input '%s'\n", cmd, input);
 
     // Determine the number of words in this command
     int numWords = 0;

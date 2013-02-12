@@ -18,9 +18,12 @@ const int   MAX_LINE = 512;
 
 void prompt()
 {
-    //write(STDOUT_FILENO, PROMPT_STR, sizeof(PROMPT_STR));
+#ifdef DEBUG
     printf("(%d) %s", getpid(), PROMPT_STR);
     fflush(stdout);
+#else
+    write(STDOUT_FILENO, PROMPT_STR, sizeof(PROMPT_STR));
+#endif
 }
 
 void error()
@@ -126,11 +129,13 @@ int run_command(struct command *cmd)
 
     if (result == -1) {
         // The specified command was not a built-in command...
-        //printf("Forking (%d) from (%d)\n", child_pid, getpid());
         pid_t child_pid = fork();
         if (child_pid == 0) {
+#ifdef DEBUG
             printf("Child (%d) of (%d)\n", getpid(), getppid());
+#endif
             execvp(cmd->words[0], cmd->words);
+
             // Exec only returns on an error...
             perror("execvp");
             error();
@@ -142,8 +147,10 @@ int run_command(struct command *cmd)
                 exit(1);
             }
             // TODO: handle redirection, check status
+#ifdef DEBUG
             printf("(%d) Child return status = %d\n", child_pid, status);
             fflush(stdout);
+#endif
         }
     }
 
@@ -155,7 +162,9 @@ int run_builtin(struct command *cmd)
     assert(cmd);
 
     if (cmd->numWords == 0) {
+#ifdef DEBUG
         printf("* Warning : running builtin on command with no words!\n");
+#endif
         return 0;
     }
 
